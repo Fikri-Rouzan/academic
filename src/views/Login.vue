@@ -2,16 +2,20 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { supabase } from '../supabase';
+import Swal from 'sweetalert2';
+import { User, KeyRound, Eye, EyeOff } from 'lucide-vue-next';
+
+// Import dan inisialisasi auth store untuk mengambil profil setelah login
+import { useAuthStore } from '../store/auth';
+const authStore = useAuthStore();
 
 const router = useRouter();
 const nim = ref('');
 const password = ref('');
 const errorMessage = ref(null);
 const loading = ref(false);
-
 const isPasswordVisible = ref(false);
 
-// Function to handle the login process
 async function handleLogin() {
   try {
     loading.value = true;
@@ -19,12 +23,12 @@ async function handleLogin() {
 
     const { data: studentData, error: studentError } = await supabase
       .from('students')
-      .select('email')
+      .select('email, full_name')
       .eq('nim', nim.value.trim())
       .single();
 
     if (studentError || !studentData) {
-      throw new Error('NIM not found. Please check your NIM and try again.');
+      throw new Error('NIM tidak ditemukan. Silakan periksa kembali NIM Anda.');
     }
     
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -32,9 +36,33 @@ async function handleLogin() {
       password: password.value,
     });
 
-    if (error) throw error;
+    if (error) {
+      throw new Error('Password yang Anda masukkan salah.');
+    }
 
-    router.push({ name: 'Profile' });
+    // Ambil data profil dan tunggu sampai selesai sebelum pindah halaman
+    await authStore.fetchUserProfile();
+    
+    // Tampilkan notifikasi sukses
+    Swal.fire({
+      title: 'Login Berhasil!',
+      text: `Selamat datang kembali, ${studentData.full_name}`,
+      icon: 'success',
+      timer: 2000,
+      showConfirmButton: false,
+      timerProgressBar: true,
+      background: '#fff',
+      color: '#343A40',
+      didOpen: () => {
+        const progressBar = Swal.getTimerProgressBar();
+        if (progressBar) {
+          progressBar.style.backgroundColor = '#5D4037';
+        }
+      }
+    }).then(() => {
+      // Arahkan ke halaman Beranda setelah alert ditutup
+      router.push({ name: 'Beranda' });
+    });
 
   } catch (error) {
     errorMessage.value = error.message;
@@ -45,65 +73,78 @@ async function handleLogin() {
 </script>
 
 <template>
-  <div class="flex items-center justify-center min-h-screen bg-gray-100">
-    <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-      <h2 class="text-2xl font-bold text-center text-gray-800">Sistem Akademik</h2>
-      <p class="text-center text-gray-600">Please sign in to your account</p>
-      
-      <form @submit.prevent="handleLogin" class="space-y-6">
-        <div>
-          <label for="nim" class="block text-sm font-medium text-gray-700">NIM (Student ID)</label>
-          <input
-            id="nim"
-            type="text"
-            v-model="nim"
-            required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            placeholder="Enter your NIM"
-          />
+  <div class="relative min-h-screen w-full overflow-hidden bg-slate-50">
+    <div class="absolute inset-0 z-0 pointer-events-none">
+      <GraduationCap class="absolute -top-4 -left-12 text-slate-200 opacity-70" :size="160" :stroke-width="1" />
+      <BookOpen class="absolute top-1/2 -right-16 text-slate-200 opacity-60 transform -rotate-12" :size="200" :stroke-width="1" />
+      <FlaskConical class="absolute -bottom-16 left-1/4 text-slate-200 opacity-50 transform rotate-12" :size="180" :stroke-width="1" />
+      <Calculator class="absolute top-16 right-1/4 text-slate-200 opacity-60 transform rotate-6" :size="120" :stroke-width="1" />
+    </div>
+    <div class="relative z-10 flex items-center justify-center min-h-screen p-4">
+      <div class="w-full max-w-sm p-8 space-y-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg">
+        <div class="text-center">
+          <h2 class="text-4xl font-bold text-[#5D4037]">
+            Sistem Akademik
+          </h2>
+          <p class="mt-2 text-gray-600">
+            Silakan masuk ke akun Anda
+          </p>
         </div>
-        
-        <div>
-          <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-          <div class="relative mt-1">
-            <input
-              id="password"
-              :type="isPasswordVisible ? 'text' : 'password'"
-              v-model="password"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 pr-10"
-              placeholder="••••••••"
-            />
-            <button 
-              type="button" 
-              @click="isPasswordVisible = !isPasswordVisible" 
-              class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none"
+        <form @submit.prevent="handleLogin" class="mt-8 space-y-6">
+          <div>
+            <label for="nim" class="block text-sm font-medium text-gray-700">NIM</label>
+            <div class="relative mt-1">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                <User :size="20" />
+              </span>
+              <input
+                id="nim"
+                type="text"
+                v-model="nim"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#996f62] focus:border-[#996f62] pl-10"
+                placeholder="Masukkan NIM Anda"
+              />
+            </div>
+          </div>
+          <div>
+            <label for="password" class="block text-sm font-medium text-gray-700">Kata Sandi</label>
+            <div class="relative mt-1">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                <KeyRound :size="20" />
+              </span>
+              <input
+                id="password"
+                :type="isPasswordVisible ? 'text' : 'password'"
+                v-model="password"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#996f62] focus:border-[#996f62] pl-10 pr-10"
+                placeholder="••••••••"
+              />
+              <button 
+                type="button" 
+                @click="isPasswordVisible = !isPasswordVisible" 
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none"
+              >
+                <EyeOff v-if="!isPasswordVisible" :size="20" />
+                <Eye v-else :size="20" />
+              </button>
+            </div>
+          </div>
+          <div v-if="errorMessage" class="p-3 text-sm text-red-700 bg-red-100 rounded-md">
+            {{ errorMessage }}
+          </div>
+          <div>
+            <button
+              type="submit"
+              :disabled="loading"
+              class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:bg-opacity-60 bg-[#996f62] hover:bg-[#8a6154] focus:ring-[#8a6154]"
             >
-              <svg v-if="!isPasswordVisible" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                <path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
-                <path fill-rule="evenodd" d="M.458 10C1.73 5.943 5.522 3 10 3s8.27 2.943 9.542 7c-1.272 4.057-5.022 7-9.542 7S1.73 14.057.458 10ZM14 10a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" clip-rule="evenodd" />
-              </svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                <path fill-rule="evenodd" d="M3.28 2.22a.75.75 0 0 0-1.06 1.06l14.5 14.5a.75.75 0 1 0 1.06-1.06l-1.745-1.745a10.029 10.029 0 0 0 3.3-4.243c-1.28-4.01-5.09-6.94-9.5-6.94a9.965 9.965 0 0 0-4.42 1.057L3.28 2.22ZM7.75 9.25a2.25 2.25 0 0 0 2.25 2.25c.39 0 .74-.1.05-.27l-2.525-2.525c.17-.3-.02-.66-.27-.05Zm1.39-3.855a2.252 2.252 0 0 1 2.25 2.25c0 .39-.1.74-.27.05l-2.525-2.525c.3-.17.66-.02.05-.27ZM10 5a9.965 9.965 0 0 1 4.42 1.057l1.745-1.745a.75.75 0 1 0-1.06-1.06L3.28 17.78a.75.75 0 0 0 1.06 1.06l1.745-1.745A10.029 10.029 0 0 1 5.5 15c1.28 4.01 5.09 6.94 9.5 6.94a9.965 9.965 0 0 1 4.42-1.057l-1.745-1.tfa.75.75 0 1 0-1.06-1.06L10.53 9.47l-.92-1.15a2.252 2.252 0 0 0-2.25-2.25Z" clip-rule="evenodd" />
-              </svg>
+              {{ loading ? 'Memproses...' : 'Masuk' }}
             </button>
           </div>
-        </div>
-        
-        <div v-if="errorMessage" class="p-3 text-sm text-red-700 bg-red-100 rounded-md">
-          {{ errorMessage }}
-        </div>
-        
-        <div>
-          <button
-            type="submit"
-            :disabled="loading"
-            class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-300"
-          >
-            {{ loading ? 'Signing in...' : 'Sign In' }}
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   </div>
 </template>

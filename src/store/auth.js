@@ -1,4 +1,4 @@
-// src/store/auth.js
+// src/store/auth.js (Versi Final yang Reaktif)
 
 import { defineStore } from 'pinia';
 import { supabase } from '../supabase';
@@ -9,28 +9,16 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
   const profile = ref(null);
   const session = ref(null);
-  const loading = ref(true);
+  const loading = ref(true); // Untuk loading awal
 
-  // Actions
-  async function fetchSession() {
-    try {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      
-      session.value = data.session;
-      if (session.value) {
-        user.value = session.value.user;
-        await fetchUserProfile();
-      }
-    } catch (error) {
-      console.error('Error fetching session:', error.message);
-    } finally {
-      loading.value = false;
-    }
-  }
-
+  /**
+   * Mengambil data profil dari tabel 'students' berdasarkan ID user yang login.
+   */
   async function fetchUserProfile() {
-    if (!user.value) return;
+    if (!user.value) {
+      profile.value = null;
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('students')
@@ -42,22 +30,46 @@ export const useAuthStore = defineStore('auth', () => {
       profile.value = data;
     } catch (error) {
       console.error('Error fetching profile:', error.message);
+      profile.value = null;
     }
   }
 
+  /**
+   * Melakukan proses sign out.
+   */
   async function signOut() {
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('Error signing out:', error.message);
-      return;
     }
-    user.value = null;
-    profile.value = null;
-    session.value = null;
+    // `onAuthStateChange` akan secara otomatis mengosongkan state
   }
 
-  // Run fetchSession once when the store is initialized
-  fetchSession();
+  // ==================================================================
+  // INI ADALAH JANTUNG DARI SOLUSI KITA
+  // Listener ini akan berjalan setiap kali ada perubahan status otentikasi
+  // (saat membuka aplikasi, login, dan logout)
+  // ==================================================================
+  supabase.auth.onAuthStateChange(async (event, newSession) => {
+    console.log("AUTH STATE CHANGED:", event); // Log untuk debugging
+    loading.value = true;
+    
+    user.value = newSession?.user ?? null;
+    session.value = newSession;
 
+    // Jika ada user (setelah login atau sesi ada), ambil profilnya
+    if (user.value) {
+      await fetchUserProfile();
+    } else {
+      // Jika tidak ada user (setelah logout), kosongkan profil
+      profile.value = null;
+    }
+    
+    // Selesaikan loading setelah semua proses selesai
+    loading.value = false;
+  });
+
+
+  // Kembalikan semua state dan fungsi agar bisa digunakan di komponen lain
   return { user, profile, session, loading, signOut, fetchUserProfile };
 });

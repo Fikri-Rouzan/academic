@@ -1,4 +1,4 @@
-// src/router/index.js
+// src/router/index.js (Versi Baru)
 
 import { createRouter, createWebHistory } from 'vue-router';
 import { supabase } from '../supabase';
@@ -8,6 +8,7 @@ import Login from '../views/Login.vue';
 import DashboardLayout from '../views/DashboardLayout.vue';
 import Profile from '../views/Profile.vue';
 import Courses from '../views/Courses.vue';
+import Beranda from '../views/Beranda.vue'; // <-- 1. IMPORT HALAMAN BERANDA
 
 const routes = [
   {
@@ -19,13 +20,13 @@ const routes = [
     path: '/',
     name: 'DashboardLayout',
     component: DashboardLayout,
-    // Nested routes. These will be displayed inside DashboardLayout
     children: [
-      { path: '', redirect: '/profile' }, // Default child route
+      { path: '', redirect: '/beranda' }, // <-- 2. UBAH REDIRECT KE BERANDA
+      { path: '/beranda', name: 'Beranda', component: Beranda, meta: { requiresAuth: true } }, // <-- 3. TAMBAHKAN ROUTE BERANDA
       { path: '/profile', name: 'Profile', component: Profile, meta: { requiresAuth: true } },
       { path: '/courses', name: 'Courses', component: Courses, meta: { requiresAuth: true } },
     ],
-    meta: { requiresAuth: true } // This entire group requires login
+    meta: { requiresAuth: true }
   }
 ];
 
@@ -34,28 +35,20 @@ const router = createRouter({
   routes,
 });
 
-// Navigation Guard
-// This runs before each navigation
 router.beforeEach(async (to, from, next) => {
   const { data: { session } } = await supabase.auth.getSession();
-
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
 
-  // If the route requires authentication and there is no user session
   if (requiresAuth && !session) {
-    // Redirect to the login page
     next({ name: 'Login' });
   } 
-  // If the user is logged in and tries to access the login page
   else if (!requiresAuth && session) {
-    // Redirect to their profile
-    next({ name: 'Profile' });
+    // 4. UBAH REDIRECT JIKA SUDAH LOGIN, AGAR MENUJU BERANDA
+    next({ name: 'Beranda' }); 
   }
   else {
-    // Otherwise, allow navigation
     next();
   }
 });
-
 
 export default router;
