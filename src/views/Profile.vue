@@ -31,10 +31,20 @@ let originalFormState = {};
 
 const showSwal = (title, text, icon) => {
   Swal.fire({
+    toast: true,
+    position: "top-end",
     title, text, icon,
+    timer: 2000,
     background: '#fff',
     color: '#343A40',
-    confirmButtonColor: '#996f62',
+    showConfirmButton: false,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+        const progressBar = Swal.getTimerProgressBar();
+        if (progressBar) {
+          progressBar.style.backgroundColor = '#5D4037';
+        }
+      }
   });
 };
 

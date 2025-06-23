@@ -43,26 +43,29 @@ async function handleLogin() {
     // Ambil data profil dan tunggu sampai selesai sebelum pindah halaman
     await authStore.fetchUserProfile();
     
-    // Tampilkan notifikasi sukses
+    // --- PERBAIKAN UTAMA: Notifikasi dan Navigasi dipisahkan ---
+
+    // 1. Tampilkan notifikasi toast (tidak memblokir)
     Swal.fire({
-      title: 'Login Berhasil!',
-      text: `Selamat datang kembali, ${studentData.full_name}`,
+      toast: true,
+      position: "top-end",
+      title: `Selamat datang, ${studentData.full_name}!`,
       icon: 'success',
       timer: 2000,
       showConfirmButton: false,
       timerProgressBar: true,
       background: '#fff',
       color: '#343A40',
-      didOpen: () => {
+      didOpen: (toast) => {
         const progressBar = Swal.getTimerProgressBar();
         if (progressBar) {
           progressBar.style.backgroundColor = '#5D4037';
         }
       }
-    }).then(() => {
-      // Arahkan ke halaman Beranda setelah alert ditutup
-      router.push({ name: 'Beranda' });
     });
+
+    // 2. Langsung arahkan pengguna ke halaman Beranda
+    router.push({ name: 'Beranda' });
 
   } catch (error) {
     errorMessage.value = error.message;

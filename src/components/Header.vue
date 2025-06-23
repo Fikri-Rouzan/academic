@@ -15,6 +15,7 @@ watch(() => route.path, () => {
   isMobileMenuOpen.value = false;
 });
 
+// --- FUNGSI LOGOUT YANG DIPERBARUI ---
 async function handleLogout() {
   Swal.fire({
     title: 'Konfirmasi Keluar',
@@ -28,9 +29,34 @@ async function handleLogout() {
     background: '#fff',
     color: '#343A40'
   }).then(async (result) => {
+    // Jika pengguna mengklik tombol "Ya, Keluar"
     if (result.isConfirmed) {
+      // Lakukan proses sign out
       await authStore.signOut();
+      
+      // Arahkan ke halaman login
       router.push({ name: 'Login' });
+      
+      // Tampilkan notifikasi toast bahwa logout berhasil
+      Swal.fire({
+        toast: true,
+        position: "top-end",
+        title: 'Anda Telah Keluar',
+        icon: 'success',
+        timer: 3000,
+        showConfirmButton: false,
+        timerProgressBar: true,
+        background: '#fff',
+        color: '#343A40',
+        didOpen: (toast) => {
+          toast.onmouseenter = Swal.stopTimer;
+          toast.onmouseleave = Swal.resumeTimer;
+          const progressBar = Swal.getTimerProgressBar();
+          if (progressBar) {
+            progressBar.style.backgroundColor = '#5D4037';
+          }
+        }
+      });
     }
   });
 }
